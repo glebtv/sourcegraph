@@ -389,7 +389,7 @@ func (p Parameters) FileContainsContent() (include []string) {
 	VisitPredicate(toNodes(p), func(field, name, value string) {
 		if field == FieldFile && (name == "contains" || name == "contains.content") {
 			var pred FileContainsContentPredicate
-			pred.ParseParams(value)
+			pred.Unmarshal(value)
 			include = append(include, pred.Pattern)
 		}
 	})
