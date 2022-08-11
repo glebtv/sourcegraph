@@ -98,13 +98,10 @@ func (EmptyPredicate) Unmarshal(_ string, negated bool) error {
 type RepoContainsPredicate struct {
 	File    string
 	Content string
+	Negated bool
 }
 
 func (f *RepoContainsPredicate) Unmarshal(params string, negated bool) error {
-	if negated {
-		return ErrNegatedPredicate
-	}
-
 	nodes, err := Parse(params, SearchTypeRegex)
 	if err != nil {
 		return err
@@ -119,7 +116,7 @@ func (f *RepoContainsPredicate) Unmarshal(params string, negated bool) error {
 	if f.File == "" && f.Content == "" {
 		return errors.New("one of file or content must be set")
 	}
-
+	f.Negated = negated
 	return nil
 }
 
@@ -173,13 +170,10 @@ func (f *RepoContainsPredicate) Name() string  { return "contains" }
 
 type RepoContainsContentPredicate struct {
 	Pattern string
+	Negated bool
 }
 
 func (f *RepoContainsContentPredicate) Unmarshal(params string, negated bool) error {
-	if negated {
-		return ErrNegatedPredicate
-	}
-
 	if _, err := regexp.Compile(params); err != nil {
 		return errors.Errorf("contains.content argument: %w", err)
 	}
@@ -187,6 +181,7 @@ func (f *RepoContainsContentPredicate) Unmarshal(params string, negated bool) er
 		return errors.Errorf("contains.content argument should not be empty")
 	}
 	f.Pattern = params
+	f.Negated = negated
 	return nil
 }
 
@@ -197,13 +192,10 @@ func (f *RepoContainsContentPredicate) Name() string  { return "contains.content
 
 type RepoContainsFilePredicate struct {
 	Pattern string
+	Negated bool
 }
 
 func (f *RepoContainsFilePredicate) Unmarshal(params string, negated bool) error {
-	if negated {
-		return ErrNegatedPredicate
-	}
-
 	if _, err := regexp.Compile(params); err != nil {
 		return errors.Errorf("contains.file argument: %w", err)
 	}
@@ -211,6 +203,7 @@ func (f *RepoContainsFilePredicate) Unmarshal(params string, negated bool) error
 		return errors.Errorf("contains.file argument should not be empty")
 	}
 	f.Pattern = params
+	f.Negated = negated
 	return nil
 }
 
@@ -321,18 +314,16 @@ func (f FileContainsContentPredicate) Name() string  { return "contains.content"
 /* file:has.owner(pattern) */
 
 type FileHasOwnerPredicate struct {
-	Owner string
+	Owner   string
+	Negated bool
 }
 
 func (f *FileHasOwnerPredicate) Unmarshal(params string, negated bool) error {
-	if negated {
-		return ErrNegatedPredicate
-	}
-
 	if params == "" {
 		return errors.Errorf("file:has.owner argument should not be empty")
 	}
 	f.Owner = params
+	f.Negated = negated
 	return nil
 }
 

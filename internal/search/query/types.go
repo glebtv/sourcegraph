@@ -360,25 +360,25 @@ func (p Parameters) RepoHasFileContent() (res []RepoHasFileContentArgs) {
 		})
 	})
 
-	VisitTypedPredicate(nodes, func(pred *RepoContainsFilePredicate, negated bool) {
+	VisitTypedPredicate(nodes, func(pred *RepoContainsFilePredicate) {
 		res = append(res, RepoHasFileContentArgs{
 			Path:    pred.Pattern,
-			Negated: negated,
+			Negated: pred.Negated,
 		})
 	})
 
-	VisitTypedPredicate(nodes, func(pred *RepoContainsContentPredicate, negated bool) {
+	VisitTypedPredicate(nodes, func(pred *RepoContainsContentPredicate) {
 		res = append(res, RepoHasFileContentArgs{
 			Content: pred.Pattern,
-			Negated: negated,
+			Negated: pred.Negated,
 		})
 	})
 
-	VisitTypedPredicate(nodes, func(pred *RepoContainsPredicate, negated bool) {
+	VisitTypedPredicate(nodes, func(pred *RepoContainsPredicate) {
 		res = append(res, RepoHasFileContentArgs{
 			Path:    pred.File,
 			Content: pred.Content,
-			Negated: negated,
+			Negated: pred.Negated,
 		})
 	})
 
@@ -403,7 +403,7 @@ func (p Parameters) RepoContainsCommitAfter() (value string) {
 	value = p.FindValue(FieldRepoHasCommitAfter)
 
 	// Look for values of repo:contains.commit.after()
-	VisitTypedPredicate(nodes, func(pred *RepoContainsCommitAfterPredicate, _ bool) {
+	VisitTypedPredicate(nodes, func(pred *RepoContainsCommitAfterPredicate) {
 		value = pred.TimeRef
 	})
 
@@ -436,8 +436,8 @@ func (p Parameters) RepoHasKVPs() (res []RepoKVPFilter) {
 }
 
 func (p Parameters) FileHasOwner() (include, exclude []string) {
-	VisitTypedPredicate(toNodes(p), func(pred *FileHasOwnerPredicate, negated bool) {
-		if negated {
+	VisitTypedPredicate(toNodes(p), func(pred *FileHasOwnerPredicate) {
+		if pred.Negated {
 			exclude = append(exclude, pred.Owner)
 		} else {
 			include = append(include, pred.Owner)
@@ -457,7 +457,7 @@ func (p Parameters) Exists(field string) bool {
 }
 
 func (p Parameters) RepoHasDescription() (descriptionPatterns []string) {
-	VisitTypedPredicate(toNodes(p), func(pred *RepoHasDescriptionPredicate, _ bool) {
+	VisitTypedPredicate(toNodes(p), func(pred *RepoHasDescriptionPredicate) {
 		split := strings.Split(pred.Pattern, " ")
 		descriptionPatterns = append(descriptionPatterns, "(?:"+strings.Join(split, ").*?(?:")+")")
 	})
