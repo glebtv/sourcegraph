@@ -19,7 +19,7 @@ type Predicate interface {
 
 	// Unmarshal parses the contents of the predicate arguments
 	// into the predicate object.
-	Unmarshal(string) error
+	Unmarshal(params string, negated bool) error
 }
 
 var DefaultPredicateRegistry = PredicateRegistry{
@@ -38,6 +38,8 @@ var DefaultPredicateRegistry = PredicateRegistry{
 		"has.owner":        func() Predicate { return &FileHasOwnerPredicate{} },
 	},
 }
+
+var ErrNegatedPredicate = errors.New("predicates do not support negation")
 
 // PredicateTable is a lookup map of one or more predicate names that resolve to the Predicate type.
 type PredicateTable map[string]func() Predicate
@@ -81,9 +83,15 @@ func ParseAsPredicate(value string) (name, params string) {
 // EmptyPredicate is a noop value that satisfies the Predicate interface.
 type EmptyPredicate struct{}
 
-func (EmptyPredicate) Field() string          { return "" }
-func (EmptyPredicate) Name() string           { return "" }
-func (EmptyPredicate) Unmarshal(string) error { return nil }
+func (EmptyPredicate) Field() string { return "" }
+func (EmptyPredicate) Name() string  { return "" }
+func (EmptyPredicate) Unmarshal(_ string, negated bool) error {
+	if negated {
+		return ErrNegatedPredicate
+	}
+
+	return nil
+}
 
 // RepoContainsPredicate represents the `repo:contains()` predicate,
 // which filters to repos that contain either a file or content
@@ -92,7 +100,11 @@ type RepoContainsPredicate struct {
 	Content string
 }
 
-func (f *RepoContainsPredicate) Unmarshal(params string) error {
+func (f *RepoContainsPredicate) Unmarshal(params string, negated bool) error {
+	if negated {
+		return ErrNegatedPredicate
+	}
+
 	nodes, err := Parse(params, SearchTypeRegex)
 	if err != nil {
 		return err
@@ -163,7 +175,11 @@ type RepoContainsContentPredicate struct {
 	Pattern string
 }
 
-func (f *RepoContainsContentPredicate) Unmarshal(params string) error {
+func (f *RepoContainsContentPredicate) Unmarshal(params string, negated bool) error {
+	if negated {
+		return ErrNegatedPredicate
+	}
+
 	if _, err := regexp.Compile(params); err != nil {
 		return errors.Errorf("contains.content argument: %w", err)
 	}
@@ -183,7 +199,11 @@ type RepoContainsFilePredicate struct {
 	Pattern string
 }
 
-func (f *RepoContainsFilePredicate) Unmarshal(params string) error {
+func (f *RepoContainsFilePredicate) Unmarshal(params string, negated bool) error {
+	if negated {
+		return ErrNegatedPredicate
+	}
+
 	if _, err := regexp.Compile(params); err != nil {
 		return errors.Errorf("contains.file argument: %w", err)
 	}
@@ -203,7 +223,11 @@ type RepoContainsCommitAfterPredicate struct {
 	TimeRef string
 }
 
-func (f *RepoContainsCommitAfterPredicate) Unmarshal(params string) error {
+func (f *RepoContainsCommitAfterPredicate) Unmarshal(params string, negated bool) error {
+	if negated {
+		return ErrNegatedPredicate
+	}
+
 	f.TimeRef = params
 	return nil
 }
@@ -219,7 +243,11 @@ type RepoHasDescriptionPredicate struct {
 	Pattern string
 }
 
-func (f *RepoHasDescriptionPredicate) Unmarshal(params string) (err error) {
+func (f *RepoHasDescriptionPredicate) Unmarshal(params string, negated bool) (err error) {
+	if negated {
+		return ErrNegatedPredicate
+	}
+
 	if _, err := regexp.Compile(params); err != nil {
 		return errors.Errorf("invalid repo:has.description() argument: %w", err)
 	}
@@ -272,7 +300,11 @@ type FileContainsContentPredicate struct {
 	Pattern string
 }
 
-func (f *FileContainsContentPredicate) Unmarshal(params string) error {
+func (f *FileContainsContentPredicate) Unmarshal(params string, negated bool) error {
+	if negated {
+		return ErrNegatedPredicate
+	}
+
 	if _, err := regexp.Compile(params); err != nil {
 		return errors.Errorf("file:contains.content argument: %w", err)
 	}
@@ -292,7 +324,11 @@ type FileHasOwnerPredicate struct {
 	Owner string
 }
 
-func (f *FileHasOwnerPredicate) Unmarshal(params string) error {
+func (f *FileHasOwnerPredicate) Unmarshal(params string, negated bool) error {
+	if negated {
+		return ErrNegatedPredicate
+	}
+
 	if params == "" {
 		return errors.Errorf("file:has.owner argument should not be empty")
 	}
