@@ -1111,6 +1111,11 @@ func testSearchClient(t *testing.T, client searchClient) {
 				counts: counts{Repo: 2},
 			},
 			{
+				name:   `repo contains file but not content`,
+				query:  `repo:contains.file(go\.mod) -repo:contains.content(go-diff)`,
+				counts: counts{Repo: 1},
+			},
+			{
 				name:   `no repo contains file`,
 				query:  `repo:contains(file:noexist.go)`,
 				counts: counts{},
@@ -1133,6 +1138,11 @@ func testSearchClient(t *testing.T, client searchClient) {
 			{
 				name:   `or-expression on repo:contains`,
 				query:  `repo:contains(content:does-not-exist-D2E1E74C7279) or repo:contains(content:nextFileFirstLine)`,
+				counts: counts{Repo: 1},
+			},
+			{
+				name:   `negated repo:contains with another repo:contains`,
+				query:  `-repo:contains.content(does-not-exist-D2E1E74C7279) and repo:contains.content(nextFileFirstLine)`,
 				counts: counts{Repo: 1},
 			},
 			{
