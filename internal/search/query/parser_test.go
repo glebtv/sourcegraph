@@ -1,17 +1,12 @@
 package query
 
 import (
-	"encoding/json"
-	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/hexops/autogold"
-	"github.com/stretchr/testify/require"
-
-	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
+/*
 func collectLabels(nodes []Node) (result labels) {
 	for _, node := range nodes {
 		switch v := node.(type) {
@@ -758,6 +753,7 @@ func Test_newOperator(t *testing.T) {
 		})
 	}
 }
+*/
 
 func TestParseStandard(t *testing.T) {
 	test := func(input string) string {
@@ -769,11 +765,23 @@ func TestParseStandard(t *testing.T) {
 		return json
 	}
 
-	t.Run("patterns are literal and slash-delimited patterns /.../ are regexp", func(t *testing.T) {
-		autogold.Equal(t, autogold.Raw(test("anjou /saumur/")))
+	/*
+		t.Run("patterns are literal and slash-delimited patterns /.../ are regexp", func(t *testing.T) {
+			autogold.Equal(t, autogold.Raw(test("anjou /saumur/")))
+		})
+
+		t.Run("quoted patterns are still literal", func(t *testing.T) {
+			autogold.Equal(t, autogold.Raw(test(`"veneto"`)))
+		})
+	*/
+
+	t.Run("and-ed patterns", func(t *testing.T) {
+		autogold.Equal(t, autogold.Raw(test(`repo:foo (/go/ AND complete AND /stream/)`)))
 	})
 
-	t.Run("quoted patterns are still literal", func(t *testing.T) {
-		autogold.Equal(t, autogold.Raw(test(`"veneto"`)))
-	})
+	/*
+		t.Run("and-ed patterns", func(t *testing.T) {
+			autogold.Equal(t, autogold.Raw(test(`repo:foo (/go/)`)))
+		})
+	*/
 }
