@@ -265,7 +265,11 @@ type RepoHasTagPredicate struct {
 	Key string
 }
 
-func (f *RepoHasTagPredicate) ParseParams(params string) (err error) {
+func (f *RepoHasTagPredicate) Unmarshal(params string, negated bool) (err error) {
+	if negated {
+		return &NegatedPredicateError{f.Field() + ":" + f.Name()}
+	}
+
 	if len(params) == 0 {
 		return errors.New("tag must be non-empty")
 	}
@@ -281,7 +285,11 @@ type RepoHasKVPPredicate struct {
 	Value string
 }
 
-func (p *RepoHasKVPPredicate) ParseParams(params string) (err error) {
+func (p *RepoHasKVPPredicate) Unmarshal(params string, negated bool) (err error) {
+	if negated {
+		return &NegatedPredicateError{p.Field() + ":" + p.Name()}
+	}
+
 	split := strings.Split(params, ":")
 	if len(split) != 2 || len(split[0]) == 0 || len(split[1]) == 0 {
 		return errors.New("expected params in the form of key:value")
