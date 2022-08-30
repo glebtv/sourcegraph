@@ -3,7 +3,7 @@ package graphqlbackend
 import "github.com/sourcegraph/sourcegraph/internal/search"
 
 type searchQueryDescriptionResolver struct {
-	query *search.ProposedQuery
+	query *search.QueryDescription
 }
 
 func (q searchQueryDescriptionResolver) Query() string {
