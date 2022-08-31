@@ -23,6 +23,27 @@ import (
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
+func TestGetConcurrencyLimit(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		got := getConcurrencyLimit(logtest.Scoped(t))
+		if got != 10 {
+			t.Fatalf("expected concurrency limit 10, but got %d", got)
+		}
+	})
+
+	t.Run("custom", func(t *testing.T) {
+		os.Setenv("SRC_BITBUCKET_SERVER_MAX_CONCURRENT_REQUESTS", "50")
+		defer func() {
+			os.Unsetenv("SRC_BITBUCKET_SERVER_MAX_CONCURRENT_REQUESTS")
+		}()
+
+		got := getConcurrencyLimit(logtest.Scoped(t))
+		if got != 50 {
+			t.Fatalf("expected concurrency limit 50, but got %d", got)
+		}
+	})
+}
+
 func TestBitbucketServerSource_MakeRepo(t *testing.T) {
 	repos := GetReposFromTestdata(t, "bitbucketserver-repos.json")
 

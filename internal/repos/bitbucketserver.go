@@ -2,10 +2,11 @@ package repos
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/sourcegraph/log"
 
@@ -18,17 +19,19 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/jsonc"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
+	"github.com/sourcegraph/sourcegraph/lib/group"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
 // A BitbucketServerSource yields repositories from a single BitbucketServer connection configured
 // in Sourcegraph via the external services configuration.
 type BitbucketServerSource struct {
-	svc     *types.ExternalService
-	config  *schema.BitbucketServerConnection
-	exclude excludeFunc
-	client  *bitbucketserver.Client
-	logger  log.Logger
+	svc              *types.ExternalService
+	config           *schema.BitbucketServerConnection
+	exclude          excludeFunc
+	client           *bitbucketserver.Client
+	concurrencyLimit uint64
+	logger           log.Logger
 }
 
 var _ Source = &BitbucketServerSource{}
@@ -80,13 +83,38 @@ func newBitbucketServerSource(logger log.Logger, svc *types.ExternalService, c *
 		return nil, err
 	}
 
+	limit := getConcurrencyLimit(logger)
+	logger.Info(
+		"Max concurrency configured for BitbuckerServerSource",
+		log.String("external_service", fmt.Sprintf("%s (ID: %d)", svc.DisplayName, svc.ID)),
+		log.Uint64("limit", limit),
+	)
+
 	return &BitbucketServerSource{
-		svc:     svc,
-		config:  c,
-		exclude: exclude,
-		client:  client,
-		logger:  logger,
+		svc:              svc,
+		config:           c,
+		exclude:          exclude,
+		client:           client,
+		concurrencyLimit: limit,
+		logger:           logger,
 	}, nil
+}
+
+func getConcurrencyLimit(logger log.Logger) uint64 {
+	defaultLimit := uint64(10)
+
+	val := os.Getenv("SRC_BITBUCKET_SERVER_MAX_CONCURRENT_REQUESTS")
+	if val == "" {
+		return defaultLimit
+	}
+
+	limit, err := strconv.ParseUint(val, 10, 0)
+	if err != nil {
+		logger.Warn("Env variable SRC_BITBUCKET_SERVER_MAX_CONCURRENT_REQUESTS has an invalid value", log.String("value", val), log.Error(err))
+		return defaultLimit
+	}
+
+	return limit
 }
 
 // ListRepos returns all BitbucketServer repositories accessible to all connections configured
@@ -213,12 +241,9 @@ func (s *BitbucketServerSource) listAllRepos(ctx context.Context, results chan S
 
 	ch := make(chan batch)
 
-	var wg sync.WaitGroup
+	concurrencyLimiter := group.New().WithMaxConcurrency(int(s.concurrencyLimit))
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
+	concurrencyLimiter.Go(func() {
 		// Admins normally add to end of lists, so end of list most likely has new repos
 		// => stream them first.
 		for i := len(s.config.Repos) - 1; i >= 0; i-- {
@@ -243,7 +268,7 @@ func (s *BitbucketServerSource) listAllRepos(ctx context.Context, results chan S
 				ch <- batch{repos: []*bitbucketserver.Repo{repo}}
 			}
 		}
-	}()
+	})
 
 	for _, q := range s.config.RepositoryQuery {
 		switch q {
@@ -253,44 +278,46 @@ func (s *BitbucketServerSource) listAllRepos(ctx context.Context, results chan S
 			q = "" // No filters.
 		}
 
-		wg.Add(1)
-		go func(q string) {
-			defer wg.Done()
-
+		// Copy to avoid the infamouse go-closure bug.
+		query := q
+		concurrencyLimiter.Go(func() {
 			next := &bitbucketserver.PageToken{Limit: 1000}
 			for next.HasMore() {
-				repos, page, err := s.client.Repos(ctx, next, q)
+				repos, page, err := s.client.Repos(ctx, next, query)
 				if err != nil {
-					ch <- batch{err: errors.Wrapf(err, "bitbucketserver.repositoryQuery: query=%q, page=%+v", q, next)}
+					ch <- batch{err: errors.Wrapf(err, "bitbucketserver.repositoryQuery: query=%q, page=%+v", query, next)}
 					break
 				}
 
 				ch <- batch{repos: repos}
 				next = page
 			}
-		}(q)
+		})
 	}
 
-	for _, q := range s.config.ProjectKeys {
-		wg.Add(1)
-		go func(q string) {
-			defer wg.Done()
+	for _, k := range s.config.ProjectKeys {
+		// s.logger.Info("Sleeping a little")
+		// time.Sleep(time.Duration(500 * time.Millisecond))
 
-			repos, err := s.client.ProjectRepos(ctx, q)
+		// Copy to avoid the infamouse go-closure bug.
+		key := k
+		concurrencyLimiter.Go(func() {
+			repos, err := s.client.ProjectRepos(ctx, key)
 			if err != nil {
 				// Getting a "fatal" error for a single project key is not a strong
 				// enough reason to stop syncing, instead wrap this error as a warning
 				// so that the sync can continue.
-				ch <- batch{err: errors.NewWarningError(errors.Wrapf(err, "bitbucketserver.projectKeys: query=%q", q))}
+				ch <- batch{err: errors.NewWarningError(errors.Wrapf(err, "bitbucketserver.projectKeys: key=%q", key))}
 				return
 			}
 
 			ch <- batch{repos: repos}
-		}(q)
+
+		})
 	}
 
 	go func() {
-		wg.Wait()
+		concurrencyLimiter.Wait()
 		close(ch)
 	}()
 
