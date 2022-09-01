@@ -1,11 +1,12 @@
 import { Suspense, HTMLAttributes, ReactElement, MouseEvent, FC, SVGProps, forwardRef } from 'react'
 
 import classNames from 'classnames'
+import PlayIcon from 'mdi-react/PlayIcon'
 
 import { ErrorAlert, ErrorMessage } from '@sourcegraph/branded/src/components/alerts'
-import { SearchAggregationMode } from '@sourcegraph/shared/src/graphql-operations'
+import { NotAvailableReasonType, SearchAggregationMode } from '@sourcegraph/shared/src/graphql-operations'
 import { lazyComponent } from '@sourcegraph/shared/src/util/lazyComponent'
-import { Text, Link, Tooltip, ForwardReferenceComponent } from '@sourcegraph/wildcard'
+import { Text, Link, Tooltip, ForwardReferenceComponent, Button } from '@sourcegraph/wildcard'
 
 import { SearchAggregationDatum, GetSearchAggregationResult } from '../../../../graphql-operations'
 
@@ -28,9 +29,11 @@ const getLink = (datum: SearchAggregationDatum): string => datum.query ?? ''
  */
 type SearchAggregationResult = GetSearchAggregationResult['searchQueryAggregate']['aggregations']
 
-function getAggregationError(aggregation?: SearchAggregationResult): Error | undefined {
+function getAggregationError(
+    aggregation?: SearchAggregationResult
+): { error: Error; type: NotAvailableReasonType } | undefined {
     if (aggregation?.__typename === 'SearchAggregationNotAvailable') {
-        return new Error(aggregation.reason)
+        return { error: new Error(aggregation.reason), type: aggregation.reasonType }
     }
 
     return
@@ -66,10 +69,21 @@ interface AggregationChartCardProps extends HTMLAttributes<HTMLDivElement> {
     mode?: SearchAggregationMode | null
     size?: 'sm' | 'md'
     onBarLinkClick?: (query: string) => void
+    onExtendTimeout: () => void
 }
 
 export function AggregationChartCard(props: AggregationChartCardProps): ReactElement | null {
-    const { data, error, loading, mode, className, size = 'sm', 'aria-label': ariaLabel, onBarLinkClick } = props
+    const {
+        data,
+        error,
+        loading,
+        mode,
+        className,
+        size = 'sm',
+        'aria-label': ariaLabel,
+        onBarLinkClick,
+        onExtendTimeout,
+    } = props
 
     if (loading) {
         return (
@@ -100,8 +114,17 @@ export function AggregationChartCard(props: AggregationChartCardProps): ReactEle
                 <BarsBackground size={size} />
                 <div className={styles.errorMessageLayout}>
                     <div className={styles.errorMessage}>
-                        We couldn’t provide an aggregation for this query. <ErrorMessage error={aggregationError} />{' '}
-                        <Link to="">Learn more</Link>
+                        {aggregationError.type === NotAvailableReasonType.TIMEOUT_EXTENSION_AVAILABLE ? (
+                            <Button variant="link" className={styles.errorButton} onClick={onExtendTimeout}>
+                                <PlayIcon />
+                                Run aggregation
+                            </Button>
+                        ) : (
+                            <>
+                                We couldn’t provide an aggregation for this query.{' '}
+                                <ErrorMessage error={aggregationError.error} /> <Link to="">Learn more</Link>
+                            </>
+                        )}
                     </div>
                 </div>
             </DataLayoutContainer>
@@ -147,7 +170,7 @@ interface DataLayoutContainerProps {
     size?: 'sm' | 'md'
 }
 
-const DataLayoutContainer = forwardRef((props, ref) => {
+const DataLayoutContainer = forwardRef(function DataLayoutContainerRef(props, ref) {
     const { as: Component = 'div', size = 'md', className, ...attributes } = props
 
     return (

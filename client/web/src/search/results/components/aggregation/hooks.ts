@@ -134,10 +134,11 @@ export const AGGREGATION_SEARCH_QUERY = gql`
         $patternType: SearchPatternType!
         $mode: SearchAggregationMode
         $limit: Int!
+        $extendedTimeout: Boolean!
         $skipAggregation: Boolean!
     ) {
         searchQueryAggregate(query: $query, patternType: $patternType) {
-            aggregations(mode: $mode, limit: $limit) @skip(if: $skipAggregation) {
+            aggregations(mode: $mode, limit: $limit, extendedTimeout: $extendedTimeout) @skip(if: $skipAggregation) {
                 __typename
                 ... on ExhaustiveSearchAggregationResult {
                     mode
@@ -157,6 +158,7 @@ export const AGGREGATION_SEARCH_QUERY = gql`
 
                 ... on SearchAggregationNotAvailable {
                     reason
+                    reasonType
                     mode
                 }
             }
@@ -173,6 +175,7 @@ interface SearchAggregationDataInput {
     aggregationMode: SearchAggregationMode | null
     limit: number
     proactive?: boolean
+    extendedTimeout: boolean
 }
 
 type SearchAggregationResults =
@@ -181,7 +184,7 @@ type SearchAggregationResults =
     | { data: GetSearchAggregationResult; loading: false; error: undefined }
 
 export const useSearchAggregationData = (input: SearchAggregationDataInput): SearchAggregationResults => {
-    const { query, patternType, aggregationMode, limit, proactive } = input
+    const { query, patternType, aggregationMode, limit, proactive, extendedTimeout } = input
 
     const calculatedAggregationModeRef = useRef<SearchAggregationMode | null>(null)
     const [, setAggregationMode] = useAggregationSearchMode()
@@ -197,6 +200,7 @@ export const useSearchAggregationData = (input: SearchAggregationDataInput): Sea
                 mode: aggregationMode,
                 limit,
                 skipAggregation: aggregationMode === null && !proactive,
+                extendedTimeout,
             },
 
             // Skip extra API request when we had no aggregation mode, and then
@@ -238,10 +242,10 @@ export const useSearchAggregationData = (input: SearchAggregationDataInput): Sea
     )
 
     useEffect(() => {
-        // If query or pattern type have been changed we should "reset" our assumptions
+        // If query, pattern type or extendedTimeout have been changed we should "reset" our assumptions
         // about calculated aggregation mode and make another api call to determine it
         calculatedAggregationModeRef.current = null
-    }, [query, patternType])
+    }, [query, patternType, extendedTimeout])
 
     if (loading) {
         return { data: undefined, error: undefined, loading: true }

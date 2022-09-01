@@ -1,4 +1,4 @@
-import { FC } from 'react'
+import { FC, useEffect, useState } from 'react'
 
 import { mdiArrowExpand } from '@mdi/js'
 
@@ -41,6 +41,8 @@ interface SearchAggregationsProps {
 export const SearchAggregations: FC<SearchAggregationsProps> = props => {
     const { query, patternType, proactive, onQuerySubmit } = props
 
+    const [extendedTimeout, setExtendedTimeoutLocal] = useState(false)
+
     const [, setAggregationUIMode] = useAggregationUIMode()
     const [aggregationMode, setAggregationMode] = useAggregationSearchMode()
     const { data, error, loading } = useSearchAggregationData({
@@ -49,7 +51,13 @@ export const SearchAggregations: FC<SearchAggregationsProps> = props => {
         aggregationMode,
         limit: 10,
         proactive,
+        extendedTimeout,
     })
+
+    const handleExtendTimeout = (): void => setExtendedTimeoutLocal(true)
+
+    // When query is updated reset extendedTimeout as per business rules
+    useEffect(() => setExtendedTimeoutLocal(false), [query])
 
     return (
         <article className="pt-2">
@@ -71,6 +79,7 @@ export const SearchAggregations: FC<SearchAggregationsProps> = props => {
                         mode={aggregationMode}
                         className={styles.chartContainer}
                         onBarLinkClick={onQuerySubmit}
+                        onExtendTimeout={handleExtendTimeout}
                     />
                     <footer className={styles.actions}>
                         <Button
