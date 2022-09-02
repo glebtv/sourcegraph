@@ -30,6 +30,8 @@ interface SearchAggregationsProps {
     /** Whether to proactively load and display search aggregations */
     proactive: boolean
 
+    caseSensitive: boolean
+
     /**
      * Emits whenever a user clicks one of aggregation chart segments (bars).
      * That should update the query and re-trigger search (but this should be connected
@@ -39,7 +41,7 @@ interface SearchAggregationsProps {
 }
 
 export const SearchAggregations: FC<SearchAggregationsProps> = props => {
-    const { query, patternType, proactive, onQuerySubmit } = props
+    const { query, patternType, proactive, caseSensitive, onQuerySubmit } = props
 
     const [, setAggregationUIMode] = useAggregationUIMode()
     const [aggregationMode, setAggregationMode] = useAggregationSearchMode()
@@ -49,6 +51,7 @@ export const SearchAggregations: FC<SearchAggregationsProps> = props => {
         aggregationMode,
         limit: 10,
         proactive,
+        caseSensitive,
     })
 
     return (

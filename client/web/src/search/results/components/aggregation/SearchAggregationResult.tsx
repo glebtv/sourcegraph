@@ -23,6 +23,8 @@ interface SearchAggregationResultProps extends HTMLAttributes<HTMLElement> {
     /** Current search query pattern type. */
     patternType: SearchPatternType
 
+    caseSensitive: boolean
+
     /**
      * Emits whenever a user clicks one of aggregation chart segments (bars).
      * That should update the query and re-trigger search (but this should be connected
@@ -32,7 +34,7 @@ interface SearchAggregationResultProps extends HTMLAttributes<HTMLElement> {
 }
 
 export const SearchAggregationResult: FC<SearchAggregationResultProps> = props => {
-    const { query, patternType, onQuerySubmit, ...attributes } = props
+    const { query, patternType, caseSensitive, onQuerySubmit, ...attributes } = props
 
     const [, setAggregationUIMode] = useAggregationUIMode()
     const [aggregationMode, setAggregationMode] = useAggregationSearchMode()
@@ -42,6 +44,7 @@ export const SearchAggregationResult: FC<SearchAggregationResultProps> = props =
         aggregationMode,
         limit: 30,
         proactive: true,
+        caseSensitive,
     })
 
     const handleCollapseClick = (): void => {

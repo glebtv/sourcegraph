@@ -301,6 +301,7 @@ export const StreamingSearchResults: React.FunctionComponent<
                 aggregationUIMode={aggregationUIMode}
                 settingsCascade={props.settingsCascade}
                 telemetryService={props.telemetryService}
+                caseSensitive={caseSensitive}
                 className={classNames(styles.sidebar, showMobileSidebar && styles.sidebarShowMobile)}
                 onNavbarQueryChange={setQueryState}
                 onSearchSubmit={handleSidebarSearchSubmit}
@@ -317,6 +318,7 @@ export const StreamingSearchResults: React.FunctionComponent<
                 <SearchAggregationResult
                     query={submittedURLQuery}
                     patternType={patternType}
+                    caseSensitive={caseSensitive}
                     aria-label="Aggregation results panel"
                     className={styles.contents}
                     onQuerySubmit={handleSearchAggregationBarClick}
