@@ -2,12 +2,19 @@ package graphqlbackend
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 
+	"github.com/graph-gophers/graphql-go"
 	gqlerrors "github.com/graph-gophers/graphql-go/errors"
 
+	"github.com/sourcegraph/log/logtest"
+
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/backend"
+	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/internal/database/dbtest"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
@@ -511,5 +518,123 @@ func TestRepositories_CursorPagination(t *testing.T) {
 				},
 			},
 		})
+	})
+}
+
+func TestRepositories_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	logger := logtest.Scoped(t)
+	db := database.NewDB(logger, dbtest.NewDB(logger, t))
+	ctx := context.Background()
+
+	schema := mustParseGraphQLSchema(t, db)
+
+	repos := types.Repos{
+		&types.Repo{Name: "repo1"},
+		&types.Repo{Name: "repo2"},
+		&types.Repo{Name: "repo3"},
+		&types.Repo{Name: "repo4"},
+		&types.Repo{Name: "repo5"},
+		&types.Repo{Name: "repo6"},
+	}
+
+	err := db.Repos().Create(ctx, repos...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin, err := db.Users().Create(ctx, database.NewUser{
+		Username:              "admin",
+		Password:              "admin",
+		EmailVerificationCode: "c",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("as a site admin", func(t *testing.T) {
+		adminCtx := actor.WithActor(ctx, actor.FromUser(admin.ID))
+
+		runRepositoriesQuery(t, adminCtx, schema, repositoriesQueryTest{
+			wantRepos:       []string{"repo1", "repo2", "repo3", "repo4", "repo5", "repo6"},
+			wantTotalCount:  6,
+			wantHasNextPage: false,
+		})
+	})
+}
+
+type repositoriesQueryTest struct {
+	args string
+
+	wantRepos       []string
+	wantTotalCount  int
+	wantHasNextPage bool
+}
+
+func runRepositoriesQuery(t *testing.T, ctx context.Context, schema *graphql.Schema, want repositoriesQueryTest) {
+	t.Helper()
+
+	type node struct {
+		Name string `json:"name"`
+	}
+
+	type pageInfo struct {
+		HasNextPage bool `json:"hasNextPage"`
+	}
+
+	type repositories struct {
+		Nodes      []node   `json:"nodes"`
+		TotalCount int      `json:"totalCount"`
+		PageInfo   pageInfo `json:"pageInfo"`
+	}
+
+	type expected struct {
+		Repositories repositories `json:"repositories"`
+	}
+
+	nodes := make([]node, 0, len(want.wantRepos))
+	for _, name := range want.wantRepos {
+		nodes = append(nodes, node{Name: name})
+	}
+
+	marshaled, err := json.Marshal(expected{
+		Repositories: repositories{
+			Nodes:      nodes,
+			TotalCount: want.wantTotalCount,
+			PageInfo:   pageInfo{HasNextPage: want.wantHasNextPage},
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to marshal expected repositories query result: %s", err)
+	}
+
+	var query string
+	if want.args != "" {
+		query = fmt.Sprintf(`{
+					repositories(%s) {
+						nodes { name }
+						totalCount
+						pageInfo { hasNextPage }
+					}
+				} `, want.args)
+	} else {
+		query = `{
+					repositories {
+						nodes { name }
+						totalCount
+						pageInfo { hasNextPage }
+					}
+				}`
+	}
+
+	RunTests(t, []*Test{
+		{
+			Context:        ctx,
+			Schema:         schema,
+			Query:          query,
+			ExpectedResult: string(marshaled),
+		},
 	})
 }
