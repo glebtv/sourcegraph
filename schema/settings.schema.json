@@ -450,7 +450,7 @@
           "type": "string",
           "enum": ["protocolHandler", "builtInServer"]
         },
-        "vscode.isrojectPathUNCPath": {
+        "vscode.isProjectPathUNCPath": {
           "description": "Indicates that the given project path is a UNC (Universal Naming Convention) path.",
           "type": "boolean",
           "default": false
