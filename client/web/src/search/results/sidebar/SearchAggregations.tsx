@@ -60,7 +60,7 @@ export const SearchAggregations: FC<SearchAggregationsProps> = props => {
     useEffect(() => setExtendedTimeoutLocal(false), [query])
 
     const showFooter =
-        data && !error && data.searchQueryAggregate?.aggregations?.__typename !== 'SearchAggregationNotAvailable'
+        !error && data?.searchQueryAggregate?.aggregations?.__typename !== 'SearchAggregationNotAvailable'
 
     return (
         <article className="pt-2">
