@@ -87,12 +87,21 @@ export const SearchFiltersSidebar: FC<PropsWithChildren<SearchFiltersSidebarProp
         onSearchSubmit([{ type: 'replaceQuery', value: query }])
     }
 
+    const showAggregationsPanel = useMemo(
+        () =>
+            enableSearchAggregations &&
+            status === 'loaded' &&
+            aggregationUIMode === AggregationUIMode.Sidebar &&
+            repoFilters.length > 0,
+        [aggregationUIMode, enableSearchAggregations, repoFilters.length, status]
+    )
+
     return (
         <SearchSidebar {...attributes} onClose={() => setSelectedTab(null)}>
             {children}
 
             {/* Need to check status so that the feature flag is available before we render */}
-            {enableSearchAggregations && status === 'loaded' && aggregationUIMode === AggregationUIMode.Sidebar && (
+            {showAggregationsPanel && (
                 <SearchSidebarSection sectionId={SectionID.GROUPED_BY} header="Group results by">
                     <SearchAggregations
                         query={submittedURLQuery}
