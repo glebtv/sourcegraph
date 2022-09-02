@@ -20,8 +20,8 @@ const LazyAggregationChart = lazyComponent<AggregationChartProps<SearchAggregati
 
 const getName = (datum: SearchAggregationDatum): string => datum.label ?? ''
 const getValue = (datum: SearchAggregationDatum): number => datum.count
-const getColor = (datum: SearchAggregationDatum): string => (datum.label ? 'var(--primary)' : 'var(--text-muted)')
 const getLink = (datum: SearchAggregationDatum): string => datum.query ?? ''
+const getColor = (): string => 'var(--primary)'
 
 /**
  * Nested aggregation results types from {@link AGGREGATION_SEARCH_QUERY} GQL query
