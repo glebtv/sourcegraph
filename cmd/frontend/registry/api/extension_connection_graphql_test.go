@@ -12,6 +12,7 @@ import (
 )
 
 func TestRegistryExtensionConnectionResolver(t *testing.T) {
+	enableLegacyExtensions()
 	int32Ptr := func(v int32) *int32 { return &v }
 	stringSlicePtr := func(s []string) *[]string { return &s }
 	extensionIDs := func(xs []graphqlbackend.RegistryExtension) (ids []string) {

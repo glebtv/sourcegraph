@@ -46,7 +46,7 @@ describe('Layout', () => {
         root.id = 'root'
         document.body.append(root)
         window.context = {
-            enableLegacyExtensions: true,
+            enableLegacyExtensions: false,
         } as any
     })
 

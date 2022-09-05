@@ -299,6 +299,7 @@ describe('Blob viewer', () => {
          * This test is meant to prevent regression: https://github.com/sourcegraph/sourcegraph/pull/15099
          */
         it('adds and clears line decoration attachments properly', async () => {
+            testContext.overrideJsContext({ enableLegacyExtensions: true })
             const mockExtensions: MockExtension[] = [
                 {
                     id: 'test',
@@ -598,6 +599,7 @@ describe('Blob viewer', () => {
         })
 
         it('sends the latest document to extensions', async () => {
+            testContext.overrideJsContext({ enableLegacyExtensions: true })
             // This test is meant to prevent regression of
             // "extensions receive wrong text documents": https://github.com/sourcegraph/sourcegraph/issues/14965
 
